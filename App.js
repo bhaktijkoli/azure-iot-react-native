@@ -1,11 +1,10 @@
-import React from "react";
-import { NativeBaseProvider, Box, Button, Image, Text } from "native-base";
+import React, { useEffect } from "react";
+import { NativeBaseProvider, Box, Button, Image, Text, HStack, Spinner, Heading } from "native-base";
 import { launchCamera } from 'react-native-image-picker';
 import { NativeModules } from 'react-native';
+import Zeroconf from 'react-native-zeroconf'
 
 const { HttpModule } = NativeModules;
-
-const BASE_URL = "https://192.168.0.105:8000";
 
 const CA_CRT = `-----BEGIN CERTIFICATE-----
 MIIDcTCCAlmgAwIBAgIJAKzgMULvx4JtMA0GCSqGSIb3DQEBBQUAMG8xCzAJBgNV
@@ -31,14 +30,28 @@ aKulTcTUvrHzeNO3J2g4M5KE4Q+A
 `
 
 export default function App() {
+  const [host, setHost] = React.useState(null)
   const [imageUrl, setImageUrl] = React.useState(null)
+
+  useEffect(() => {
+    const zeroconf = new Zeroconf();
+    zeroconf.on('start', () => console.log('The scan has started.'))
+    zeroconf.on('stop', () => console.log('The scan has started.'))
+    zeroconf.on('resolved', (device) => {
+      console.log(device)
+      setHost(device.host)
+      zeroconf.stop()
+    })
+    zeroconf.scan(type = 'http', protocol = 'tcp', domain = 'local.');
+  }, [])
+
   const handleUpload = () => {
     launchCamera({
       mediaType: 'photo',
     }, (response) => {
       if (response.assets.length) {
         const asset = response.assets[0]
-        const uploadUrl = `${BASE_URL}/upload`;
+        const uploadUrl = `https://${host}:8000/upload`;
         const files = [
           {
             name: 'file',
@@ -48,14 +61,14 @@ export default function App() {
           },
         ];
 
-        HttpModule.createSSLClient(CA_CRT, '192.168.0.105');
+        HttpModule.createSSLClient(CA_CRT, host);
         HttpModule.upload(uploadUrl, {
           files,
           fields: {}
         })
           .then((res) => {
             const result = JSON.parse(res)
-            setImageUrl(`${BASE_URL}/uploads/${result.file}`)
+            setImageUrl(`https://${host}:8000/uploads/${result.file}`)
           })
       }
     });
@@ -64,7 +77,21 @@ export default function App() {
   return (
     <NativeBaseProvider>
       <Box flex={1} flexDirection="column" justifyContent="center" alignItems="center">
-        <Button onPress={handleUpload} marginBottom={5}>Upload</Button>
+        {
+          host && (
+            <Button onPress={handleUpload} marginBottom={5}>Upload</Button>
+          )
+        }
+        {
+          !host && (
+            <HStack space={2} justifyContent="center">
+              <Spinner accessibilityLabel="Loading posts" />
+              <Heading color="primary.500" fontSize="md">
+                Looking for Edge Device Locally
+              </Heading>
+            </HStack>
+          )
+        }
         {
           imageUrl && (
             <>
