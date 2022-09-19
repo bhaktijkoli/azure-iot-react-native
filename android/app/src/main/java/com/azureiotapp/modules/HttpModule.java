@@ -1,5 +1,8 @@
 package com.azureiotapp.modules;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 import android.util.Log;
 
 import com.facebook.react.bridge.NativeModule;
@@ -12,6 +15,7 @@ import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -116,6 +120,26 @@ public class HttpModule extends ReactContextBaseJavaModule {
 
             Response response = this.client.newCall(request).execute();
             promise.resolve(response.body().string());
+        } catch (Exception e) {
+            promise.reject(e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void getImage(String url, Promise promise) {
+        try {
+            Request request = new Request.Builder()
+                    .url(url)
+                    .build();
+
+            Response response = this.client.newCall(request).execute();
+            InputStream inputStream = response.body().byteStream();
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+            byte[] byteArray = byteArrayOutputStream .toByteArray();
+            String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
+            promise.resolve(encoded);
         } catch (Exception e) {
             promise.reject(e.getMessage());
         }

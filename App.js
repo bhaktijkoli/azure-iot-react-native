@@ -31,8 +31,8 @@ aKulTcTUvrHzeNO3J2g4M5KE4Q+A
 
 export default function App() {
   const [host, setHost] = React.useState(null)
-  const [imageUrl, setImageUrl] = React.useState(null)
-
+  const [image, setImage] = React.useState(null)
+  const [uploading, setUploading] = React.useState(false)
   useEffect(() => {
     const zeroconf = new Zeroconf();
     zeroconf.on('start', () => console.log('The scan has started.'))
@@ -60,7 +60,7 @@ export default function App() {
             type: asset.type
           },
         ];
-
+        setUploading(true)
         HttpModule.createSSLClient(CA_CRT, host);
         HttpModule.upload(uploadUrl, {
           files,
@@ -68,7 +68,12 @@ export default function App() {
         })
           .then((res) => {
             const result = JSON.parse(res)
-            setImageUrl(`https://${host}:8000/uploads/${result.file}`)
+            const url = `https://${host}:8000/uploads/${result.file}`
+            HttpModule.getImage(url)
+              .then(setImage)
+              .finally(() => {
+                setUploading(false)
+              })
           })
       }
     });
@@ -78,7 +83,7 @@ export default function App() {
     <NativeBaseProvider>
       <Box flex={1} flexDirection="column" justifyContent="center" alignItems="center">
         {
-          host && (
+          (!uploading && host) && (
             <Button onPress={handleUpload} marginBottom={5}>Upload</Button>
           )
         }
@@ -93,15 +98,25 @@ export default function App() {
           )
         }
         {
-          imageUrl && (
+          uploading && (
+            <HStack space={2} justifyContent="center">
+              <Spinner accessibilityLabel="Loading posts" />
+              <Heading color="primary.500" fontSize="md">
+                Uploading
+              </Heading>
+            </HStack>
+          )
+        }
+        {
+          image && (
             <>
-              {/* <Image
-              source={{
-                 uri: imageUrl
-               }}
-               alt="Alternate Text"
-            /  size="xl" /> */}
-              <Text>{imageUrl}</Text>
+              <Image
+                source={{
+                  uri: `data:image/png;base64,${image}`
+                }}
+                size="2xl"
+                alt="Alternate Text"
+              />
             </>
           )
         }
